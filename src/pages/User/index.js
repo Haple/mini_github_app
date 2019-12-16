@@ -30,43 +30,40 @@ export default class User extends Component {
   };
 
   state = {
-    stars: [],
-    loading: false,
-    refreshing: false,
     page: 1,
+    stars: [],
+    loading: true,
+    refreshing: false,
   };
 
   async componentDidMount() {
-    await this.refreshList();
+    await this.loadStars();
   }
 
-  loadMore = async () => {
+  loadStars = async (page = 1) => {
+    const { stars } = this.state;
     const { navigation } = this.props;
-    const { page, stars } = this.state;
     const user = navigation.getParam('user');
+
     const { data: newStars } = await api.get(`/users/${user.login}/starred`, {
-      params: {
-        page: page + 1,
-      },
+      params: { page },
     });
     this.setState({
-      stars: [...stars, ...newStars],
-      page: page + 1,
-    });
-  };
-
-  refreshList = async () => {
-    this.setState({ loading: true });
-
-    const { navigation } = this.props;
-    const user = navigation.getParam('user');
-    const { data: stars } = await api.get(`/users/${user.login}/starred`);
-    this.setState({
-      stars,
-      page: 1,
+      page,
       loading: false,
+      refreshing: false,
+      stars: page > 1 ? [...stars, ...newStars] : newStars,
     });
   };
+
+  loadMoreStars = () => {
+    const { page } = this.state;
+    const nextPage = page + 1;
+    this.loadStars(nextPage);
+  };
+
+  refreshList = async () =>
+    this.setState({ refreshing: true, stars: [] }, this.loadStars);
 
   handleNavigate = repository => {
     const { navigation } = this.props;
@@ -95,14 +92,12 @@ export default class User extends Component {
             onRefresh={this.refreshList}
             refreshing={refreshing}
             onEndReachedThreshold={0.5}
-            onEndReached={this.loadMore}
+            onEndReached={this.loadMoreStars}
             renderItem={({ item }) => (
-              <Starred>
+              <Starred onPress={() => this.handleNavigate(item)}>
                 <OwnerAvatar source={{ uri: item.owner.avatar_url }} />
                 <Info>
-                  <Title onPress={() => this.handleNavigate(item)}>
-                    {item.name}
-                  </Title>
+                  <Title>{item.name}</Title>
                   <Author>{item.owner.login}</Author>
                 </Info>
               </Starred>
