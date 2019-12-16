@@ -31,16 +31,12 @@ export default class User extends Component {
   state = {
     stars: [],
     loading: false,
+    refreshing: false,
     page: 1,
   };
 
   async componentDidMount() {
-    const { navigation } = this.props;
-    this.setState({ loading: true });
-    const user = navigation.getParam('user');
-    const response = await api.get(`/users/${user.login}/starred`);
-
-    this.setState({ stars: response.data, loading: false });
+    await this.refreshList();
   }
 
   loadMore = async () => {
@@ -58,9 +54,22 @@ export default class User extends Component {
     });
   };
 
+  refreshList = async () => {
+    this.setState({ loading: true });
+
+    const { navigation } = this.props;
+    const user = navigation.getParam('user');
+    const { data: stars } = await api.get(`/users/${user.login}/starred`);
+    this.setState({
+      stars,
+      page: 1,
+      loading: false,
+    });
+  };
+
   render() {
     const { navigation } = this.props;
-    const { stars, loading } = this.state;
+    const { stars, loading, refreshing } = this.state;
 
     const user = navigation.getParam('user');
 
@@ -77,6 +86,8 @@ export default class User extends Component {
           <Stars
             data={stars}
             keyExtractor={star => String(star.id)}
+            onRefresh={this.refreshList}
+            refreshing={refreshing}
             onEndReachedThreshold={0.5}
             onEndReached={this.loadMore}
             renderItem={({ item }) => (
